@@ -5,10 +5,13 @@ export const styles = StyleSheet.create({
     backgroundColor: "blue", 
     padding: 10, 
     borderRadius: 5, 
-    minWidth: 200,
+    width: 150,
+    height: 45,
     marginLeft: 5,
     marginTop: 10,
     marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
 
   },
   text: { color: "white", textAlign: "center" } 

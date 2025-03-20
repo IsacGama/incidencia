@@ -1,38 +1,197 @@
-import { Text, StyleSheet, ScrollView, Alert, Modal, View } from "react-native";
+import { Text, StyleSheet, ScrollView, Alert, Modal, View, Image } from "react-native";
 import { useState, useEffect } from "react";
 import * as Location from "expo-location";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 
-
 import Input from "./components/input";
 import Button from "./components/button";
-import Select from "./components/select";
 import InputFoto from "./components/inputFoto";
 import Localizacao from "./components/localization";
 import LoadingSpinner from "./components/carregamento";
-import { IncidenciaTipo } from "./components/select";
+import TipoIncidenciaSelector, { IncidenciaTipo } from "./components/tipoIncidenciaSelector";
 
-// Defina os tipos de fotos necessários para cada tipo de incidência
 type PhotoRequirements = {
   [key in IncidenciaTipo]: string[];
 };
 
 const photoRequirements: PhotoRequirements = {
-  [IncidenciaTipo.ROUBO]: ["Foto do Local", "Foto do Objeto Roubado"],
-  [IncidenciaTipo.ACIDENTE]: ["Foto do Veículo", "Foto da Sinalização", "Foto Geral"],
-  [IncidenciaTipo.VANDALISMO]: ["Foto do Dano", "Foto do Local"],
-  [IncidenciaTipo.OUTRO]: ["Foto do Ocorrido"],
+  [IncidenciaTipo.SERVIÇO_IMPRODUTIVO]: ["Foto com a placa no local do serviço"],
+  [IncidenciaTipo.REPOSIÇÃO_DE_ELO]: ["Chave aberta", "Chave fechada", "Foto da legenda da chave ou trafo", "Foto ou print da APR"],
+  [IncidenciaTipo.CONEXÃO_NO_POSTE_RAMAL_UC_CAIXA_DERIVAÇÃO]: [
+    "Antes do poste",
+    "Depois com o eletricista na escada",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.SUBSTITUIÇÃO_DE_NH_ACIONAMENTO_CD_TRAFO]: [
+    "Antes do poste do trafo com a proteção aberta",
+    "Depois do poste com a vara de manobra sinalizando o acionamento, ou eletricista na escada",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.INSTALAÇÃO_DE_RAMAL_UC]: [
+    "Pontalete sem o fio",
+    "Pontalete com o fio",
+    "Foto do antes do poste",
+    "Escada no poste com eletricista",
+    "Medidor com fio",
+    "Medidor sem fio",
+    "Sucata (Obs: O fio da sucata deve estar enrolado no chão)",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.RETIRADA_DE_RAMAL_UC]: [
+    "Pontalete com o fio",
+    "Foto do antes do poste",
+    "Escada no poste com eletricista",
+    "Medidor com fio",
+    "Medidor sem fio",
+    "Sucata (Obs: O fio da sucata deve estar enrolado no chão)",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.PODA_NA_BT]: [
+    "Foto das árvores afetando a rede, priorizar foto com visão panorâmica da rede",
+    "Foto das podas executadas por árvore, foto panorâmica da rede livre",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.PODA_NA_MT]: [
+    "Foto das árvores afetando a rede, priorizar foto com visão panorâmica da rede",
+    "Foto das podas executadas por árvore, foto panorâmica da rede livre",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.CORTE_DE_ÁRVORE]: [
+    "Foto das árvores afetando a rede, priorizar foto com visão panorâmica da rede",
+    "Foto dos cortes 20cm do solo, executados por árvore, foto panorâmica da rede livre",
+    "Foto dos troncos cortados",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.CONEXÃO_NO_MEDIDOR]: [
+    "Foto do medidor aberto",
+    "Eletricista fazendo a conexão no medidor",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.SERVIÇO_NO_MEDIDOR_E_POSTE]: [
+    "Foto do medidor aberto",
+    "Eletricista fazendo a conexão no medidor",
+    "Antes do poste",
+    "Depois com o eletricista na escada",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.RETIRADA_DE_OBJETOS_ESTRANHOS]: [
+    "Poste, medidor ou rede com o objeto",
+    "Poste, medidor ou rede sem o objeto",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.INSTALAÇÃO_DE_ESPAÇADOR]: [
+    "Rede sem o espaçador",
+    "Rede com o espaçador",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.JUMP_NA_BT]: [
+    "Jump partido",
+    "Eletricista da escada com jump normalizado",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.JUMP_NA_MT]: [
+    "Jump partido",
+    "Eletricista da escada com jump normalizado",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.MANOBRA_DE_CHAVE]: [
+    "Chave aberta",
+    "Chave fechada",
+    "Foto da legenda da chave",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.ELEVAÇÃO_DO_TAP_MANOBRA]: [
+    "Chave aberta",
+    "Eletricista na escada",
+    "Chave fechada",
+    "Foto das legendas",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.TENSIONAMENTO_NA_REDE_BT_MT]: [
+    "Cabo baixo",
+    "Eletricista na escada",
+    "Cabo tensionado",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.EMENDA_NA_MT]: [
+    "Cabo partido no chão",
+    "Rede que o cabo partiu",
+    "Emenda no chão",
+    "Emenda no fio tensionado",
+    "Eletricista na escada",
+    "Foto de cada emenda",
+    "Foto panorâmica da rede com a emenda",
+    "Sucata (se houver)",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.EMENDA_NA_BT]: [
+    "Cabo partido no chão",
+    "Rede que o cabo partiu",
+    "Emenda no chão",
+    "Emenda no fio tensionado",
+    "Eletricista na escada",
+    "Foto de cada emenda",
+    "Foto panorâmica da rede com a emenda",
+    "Sucata (se houver)",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.INSPEÇÃO_NA_BA_DT]: [
+    "Foto do CSI inicial e do poste e final",
+    "Foto do poste",
+    "Foto do CSI final",
+    "Total de KM e nome do operador que autorizou",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.LEITURA_DE_TRAFO]: [
+    "Foto do antes do poste",
+    "Escada no poste com eletricista + leitura na baixa",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.TENSIONAMENTO_DE_RAMAL]: [
+    "Cabo baixo",
+    "Eletricista na escada",
+    "Cabo tensionado",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.TEMPO_DE_ESPERA_POR_SOLICITAÇÃO_ENEL]: [
+    "Foto da equipe em campo com horário inicial na foto",
+    "Foto da equipe em campo com horário final na foto",
+    "Nome do operador que autorizou e tempo de espera na baixa do serviço",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.SUBSTITUIÇÃO_DE_CABO_BT_MT]: [
+    "Cabo partido no chão",
+    "Rede que o cabo partiu",
+    "Foto do cabo novo no chão",
+    "Eletricista na escada",
+    "Foto do cabo tensionado",
+    "Foto panorâmica da rede",
+    "Foto panorâmica da rede com a emenda",
+    "Foto da sucata",
+    "Foto ou print da APR",
+  ],
+  [IncidenciaTipo.SUBSTITUIÇÃO_DE_TRAFO]: [
+    "Foto do antes do poste do trafo",
+    "Foto do trafo novo no chão",
+    "Foto da placa do trafo novo com as informações legíveis",
+    "Foto do eletricista na escada",
+    "Foto das chaves, para-raios e cx de proteção novos no chão, se houver",
+    "Foto do trafo velho no chão",
+    "Foto da placa do trafo velho com as informações legíveis",
+    "Foto das chaves, para-raios e cx de proteção velhos no chão, se houver",
+    "Foto ou print da APR",
+  ],
 };
 
 export default function App() {
-  const [tipoIncidencia, setTipoIncidencia] = useState<IncidenciaTipo>(IncidenciaTipo.ROUBO);
+  const [tipoIncidencia, setTipoIncidencia] = useState<IncidenciaTipo | null>(null);
   const [numeroIncidencia, setNumeroIncidencia] = useState<string>("");
-  const [fotos, setFotos] = useState<Record<string, { uri: string; aspectRatio: number } | null>>({});
+  const [fotos, setFotos] = useState<Record<string, { uri: string; aspectRatio: number }[]>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [mapSnapshotUri, setMapSnapshotUri] = useState<string | null>(null);
 
-  // Reseta as fotos quando o tipo de incidência muda
   useEffect(() => {
     setFotos({});
   }, [tipoIncidencia]);
@@ -40,169 +199,231 @@ export default function App() {
   const handleGerarPDF = async () => {
     setIsLoading(true);
     try {
-      // Validação do número da incidência
       if (!numeroIncidencia.trim()) {
         Alert.alert("Erro", "Preencha o número da incidência!");
         return;
       }
 
-      // Validação das fotos
-      const requiredPhotos = photoRequirements[tipoIncidencia];
-      const missingPhotos = requiredPhotos.filter((desc) => !fotos[desc]?.uri);
-
-      if (missingPhotos.length > 0) {
-        Alert.alert("Erro", `Fotos obrigatórias faltando:\n${missingPhotos.join("\n")}`);
+      if (!tipoIncidencia) {
+        Alert.alert("Erro", "Selecione um tipo de incidência!");
         return;
       }
-
-      // Captura a localização
+  
+      const requiredPhotos = photoRequirements[tipoIncidencia];
+      const missingPhotos = requiredPhotos.filter((desc) => !fotos[desc]?.[0]?.uri);
+  
+      if (missingPhotos.length > 0) {
+        Alert.alert("Erro", `Faltam as seguintes fotos: ${missingPhotos.join(', ')}`);
+        return;
+      }
+  
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Erro", "Permissão para acessar a localização foi negada.");
+        Alert.alert("Erro", "Permissão de localização negada.");
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
+      let location = null;
+      try {
+        location = await Location.getCurrentPositionAsync({});
+      } catch (error) {
+        console.warn("Erro ao obter localização:", error);
+      }
+  
       const dataHora = new Date().toLocaleString();
-
-      // Converte as fotos para base64
-      let fotosBase64 = [];
-      for (const [descricao, foto] of Object.entries(fotos)) {
-        if (foto) {
-          // Verifica se o arquivo ainda existe
-          const fileInfo = await FileSystem.getInfoAsync(foto.uri);
-          if (!fileInfo.exists) {
-            Alert.alert("Erro", `Arquivo da foto "${descricao}" não encontrado.`);
-            return;
+  
+      // Processamento da imagem do mapa
+      let mapSnapshotBase64 = null;
+      if (mapSnapshotUri) {
+        if (mapSnapshotUri.startsWith('data:')) {
+          mapSnapshotBase64 = mapSnapshotUri.split(',')[1];
+        } else {
+          const fileInfo = await FileSystem.getInfoAsync(mapSnapshotUri);
+          if (fileInfo.exists) {
+            mapSnapshotBase64 = await FileSystem.readAsStringAsync(mapSnapshotUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
           }
-
-          const base64 = await FileSystem.readAsStringAsync(foto.uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          fotosBase64.push({ descricao, base64 });
         }
       }
-
-      // Cria o conteúdo do PDF
+  
+      // Processamento das fotos
+      const fotosBase64 = [];
+      for (const [descricao, listaFotos] of Object.entries(fotos)) {
+        if (listaFotos?.length > 0) {
+          for (const foto of listaFotos) {
+            try {
+              let base64;
+              if (foto.uri.startsWith('data:')) {
+                base64 = foto.uri.split(',')[1];
+              } else {
+                const fileInfo = await FileSystem.getInfoAsync(foto.uri);
+                if (!fileInfo.exists) throw new Error('Arquivo não encontrado');
+                
+                base64 = await FileSystem.readAsStringAsync(foto.uri, {
+                  encoding: FileSystem.EncodingType.Base64,
+                });
+              }
+              fotosBase64.push({ descricao, base64 });
+            } catch (error) {
+              Alert.alert("Erro", `Erro na foto ${descricao}: ${
+                error instanceof Error ? error.message : 'Erro desconhecido'
+              }`);
+              return;
+            }
+          }
+        }
+      }
+  
+      // Geração do HTML do PDF
       const htmlContent = `
         <html>
           <head>
             <style>
-              @page {
-                size: A4;
-                margin: 20px;
+              @page { size: A4; margin: 20px; }
+              body { font-family: Arial; }
+              .page { page-break-after: always; padding: 20px; }
+              h1 { font-size: 50px; margin-bottom: 20px; color: blue; }
+              h2 { font-size: 38px; margin-bottom: 10px; color: red; }
+              p { margin: 8px 0; font-size: 25px; }
+              .mapa-container { 
+                margin: 15px 0; 
+                padding: 10px;
+                page-break-inside: avoid;
               }
-              .page {
-                page-break-after: always;
-                padding: 20px;
+              .img-mapa {
+                max-width: 100%;
+                height: 150mm;
+                margin-top: 15px;
+                page-break-inside: avoid;
               }
-              .photo-page {
-                page-break-before: always;
-                padding: 20px;
-              }
-              img {
+              .img-fotos {
                 max-width: 100%;
                 height: 200mm;
                 margin-top: 15px;
                 page-break-inside: avoid;
               }
-              h1 { font-size: 50px; margin-bottom: 20px; color: blue; }
-              h2 { font-size: 38px; margin-bottom: 10px; color: red; }
-              p { margin: 8px 0; font-size: 25px; }
             </style>
           </head>
           <body>
-            <!-- Primeira página -->
             <div class="page">
               <h1>Relatório de Incidência</h1>
               <div class="info-section">
-                <p><strong>Número da Incidência:</strong> ${numeroIncidencia}</p>
-                <p><strong>Tipo de Incidência:</strong> ${tipoIncidencia}</p>
-                <p><strong>Localização:</strong> Latitude ${latitude}, Longitude ${longitude}</p>
-                <p><strong>Data e Hora:</strong> ${dataHora}</p>
+                <p><strong>Nº Incidência:</strong> ${numeroIncidencia}</p>
+                <p><strong>Tipo:</strong> ${tipoIncidencia}</p>
+                <p><strong>Coordenadas:</strong> ${
+                location 
+                  ? `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`
+                  : "Erro: Não foi possível obter a localização devido à falta de sinal de GPS."
+              }</p>
+                <p><strong>Data:</strong> ${dataHora}</p>
               </div>
+              
+              ${mapSnapshotBase64 ? `
+                <div class="mapa-container">
+                  <h2>Localização no Mapa</h2>
+                  <img class="img-mapa" src="data:image/png;base64,${mapSnapshotBase64}" />
+                </div>` : ''}
             </div>
-
-            <!-- Páginas das fotos -->
-            ${fotosBase64
-              .map(
-                (foto) => `
-              <div class="photo-page">
-                <h2>${foto.descricao}</h2>
-                <img src="data:image/jpeg;base64,${foto.base64}" />
+  
+            ${fotosBase64.map((foto, index) => `
+              <div class="page">
+                <h2>Foto ${index + 1}: ${foto.descricao}</h2>
+                <img class="img-fotos" src="data:image/jpeg;base64,${foto.base64}" />
               </div>`
-              )
-              .join("")}
+            ).join('')}
           </body>
         </html>
       `;
-
-      // Gera o PDF
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-
-      // Verifica se o PDF foi gerado com sucesso
-      if (!uri) {
-        Alert.alert("Erro", "Erro ao gerar o PDF.");
-        return;
-      }
-
-      // Formata a data para o padrão desejado (exemplo: "2023-10-05")
-      const dataAtual = new Date().toISOString().split('T')[0];
-
-      // Cria o nome do arquivo no padrão "Incidência_${nºincidencia}_${Data}"
-      const nomeArquivo = `Incidência_${numeroIncidencia}_${dataAtual}.pdf`;
-
-      // Salva o PDF em um local permanente
-      const novoUri = `${FileSystem.documentDirectory}${nomeArquivo}`;
-      await FileSystem.copyAsync({
-        from: uri,
-        to: novoUri,
+  
+      // Geração do PDF
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        width: 595,
+        height: 842,
       });
-
-      // Compartilha o PDF
+  
+      const dataAtual = new Date().toISOString().split('T')[0];
+      const nomeArquivo = `Incidência_${numeroIncidencia}_${dataAtual}.pdf`;
+      const novoUri = `${FileSystem.documentDirectory}${nomeArquivo}`;
+  
+      await FileSystem.copyAsync({ from: uri, to: novoUri });
+  
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(novoUri, { mimeType: "application/pdf", dialogTitle: "Salvar PDF" });
+        await Sharing.shareAsync(novoUri, { 
+          mimeType: "application/pdf", 
+          dialogTitle: "Salvar Relatório",
+          UTI: "com.adobe.pdf"
+        });
       } else {
         Alert.alert("Erro", "Compartilhamento não disponível.");
       }
+  
     } catch (error) {
-      console.error("Erro ao gerar o PDF:", error);
-      Alert.alert("Erro", "Ocorreu um erro ao gerar o PDF.");
+      console.error("Erro detalhado:", error);
+      Alert.alert("Erro", (error as Error)?.message || "Falha na geração do PDF");
     } finally {
-      setIsLoading(false); // Desativa o carregamento
+      setIsLoading(false);
     }
   };
 
   const handleNovaIncidencia = () => {
-    setTipoIncidencia(IncidenciaTipo.ROUBO);
+    setTipoIncidencia(null);
     setNumeroIncidencia("");
-    setFotos({}); // Limpa as fotos
+    setFotos({});
+    setMapSnapshotUri(null);
   };
 
   return (
-    <ScrollView contentContainerStyle={style.container}>
-      <Text style={style.titulo}>Incidência</Text>
-
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.titulo}>Registro de Incidências</Text>
       <Input
-        placeholder="Digite o número da incidência"
+        placeholder="Ex:. 1234567890"
         value={numeroIncidencia}
         onChangeText={setNumeroIncidencia}
+        keyboardType="numeric"
+        label="Digite o nº da incidência"
+        required
       />
 
-      <Localizacao />
+      <Localizacao onMapSnapshot={setMapSnapshotUri} />
 
-      {/* Select para escolher o tipo de incidência */}
-      <Select selectedType={tipoIncidencia} onSelectType={setTipoIncidencia} />
+      {mapSnapshotUri && (
+        <Image 
+          source={{ uri: mapSnapshotUri }} 
+          style={styles.snapshotImage} 
+          resizeMode="contain"
+        />
+      )}
 
-      {/* Componente de foto recebe o tipo da incidência */}
-      <InputFoto tipoIncidencia={tipoIncidencia} onFotosChange={setFotos} fotos={fotos} />
+      <TipoIncidenciaSelector selectedType={tipoIncidencia} onSelectType={setTipoIncidencia} />
 
-      <Button onPress={handleGerarPDF}>Transformar em PDF e enviar</Button>
-      <Button onPress={handleNovaIncidencia}>Registrar Nova Incidência</Button>
+      {tipoIncidencia && (
+      <InputFoto 
+        tipoIncidencia={tipoIncidencia} 
+        onFotosChange={setFotos} 
+        fotos={fotos} 
+        required
+      />
+    )}
 
-      <Modal transparent={true} visible={isLoading}>
-        <View style={style.modalContainer}>
+      <View style={styles.buttonContainer}>
+
+        <Button 
+        onPress={handleGerarPDF}
+        texto="Gerar Relatório PDF"
+        color="#2196F3"
+        />
+
+        <Button 
+        onPress={handleNovaIncidencia}
+        texto="Nova Incidência"
+        color="#4CAF50"
+        />
+
+      </View>
+      <Modal transparent visible={isLoading}>
+        <View style={styles.modalContainer}>
           <LoadingSpinner />
         </View>
       </Modal>
@@ -210,26 +431,43 @@ export default function App() {
   );
 }
 
-const style = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    justifyContent: "flex-start",
-    alignItems: "center",
     padding: 20,
-    backgroundColor: "#f0f0f0",
-    gap: 30,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titulo: {
-    color: "blue",
-    fontSize: 30,
-    fontWeight: "bold",
-    marginTop: 50,
-    marginBottom: 20,
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: 'blue',
+    marginVertical: 20,
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
+  snapshotImage: {
+    width: '100%',
+    height: 200,
+    marginVertical: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  numeroIncidencia: {
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  obrigatorio: {
+    color:"red",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+  }
 });

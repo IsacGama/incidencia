@@ -20,7 +20,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4A90E2"
       },
-      "package": "com.isacgama0.incidencia"
+      "package": "com.isacgama0.incidencia",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
